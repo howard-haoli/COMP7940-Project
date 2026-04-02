@@ -1,0 +1,14 @@
+config.ini
+*.ini
+__pycache__/
+venv/
+key/
+hello.py
+exercise.py
+.DS_Store
+
+.env
+*.pyc
+*.pyo
+*.pyd
+.idea/
