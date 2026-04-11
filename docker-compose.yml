@@ -1,0 +1,46 @@
+# ===== [新增文件] 根据Word文档第2.2节，容器编排配置 =====
+# Docker Compose 可选优化：用于多容器管理和资源限制
+
+version: '3.8'
+services:
+  campus-bot:
+    # ===== [根据文档第2.1节] 使用Dockerfile构建 =====
+    build: .
+    container_name: campus-telegram-bot
+    env_file: .env
+    restart: always
+    
+    # ===== [根据文档可选优化] 资源限制（防止容器占用过多资源，成本&稳定性控制） =====
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    
+    networks:
+      - bot-net
+    
+    # ===== [可选优化] 容器健康检查 =====
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===== [根据文档可选优化] Redis缓存（提升性能） =====
+  redis:
+    image: redis:alpine
+    container_name: bot-redis
+    restart: always
+    networks:
+      - bot-net
+    # Redis数据持久化
+    volumes:
+      - redis-data:/data
+
+networks:
+  bot-net:
+    driver: bridge
+
+volumes:
+  redis-data:

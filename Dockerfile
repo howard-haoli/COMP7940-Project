@@ -1,13 +1,6 @@
-FROM python:3.12-slim
+# ===== [新增文件] 根据Word文档第2.1节，应用容器构建 =====
+# Docker必选要求：用于将应用容器化部署至AWS EC2
 
-WORKDIR /COMP7940-Project
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY *.py .
-CMD ["python", "chatbot.py"]
-
-# 基础镜像
 FROM python:3.10-slim
 
 # 设置工作目录
@@ -22,5 +15,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 复制项目代码
 COPY . .
 
-# 启动命令
+# 启动命令 - 运行main.py作为主程序
 CMD ["python", "main.py"]
