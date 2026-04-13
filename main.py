@@ -250,13 +250,9 @@ def main():
     # 加载配置
     logger.info("INIT: 加载配置文件...")
     try:
-        import configparser
-        config = configparser.ConfigParser()
-        config.read('config.ini')
-        
-        # ===== [新增] 初始化ChatGPT客户端 =====
+        # ===== [修改] 初始化ChatGPT客户端 - 现在使用环境变量 =====
         logger.info("INIT: 初始化ChatGPT客户端...")
-        gpt = ChatGPT(config)
+        gpt = ChatGPT()  # 不再需要传递config参数
         logger.info("✓ ChatGPT客户端初始化成功")
     except Exception as e:
         logger.error(f"✗ 配置加载失败: {e}")
@@ -269,7 +265,9 @@ def main():
     # 创建Telegram应用
     logger.info("INIT: 连接Telegram Bot...")
     try:
-        token = os.getenv('TELEGRAM_BOT_TOKEN') or config['TELEGRAM']['TELEGRAM_BOT_TOKEN']
+        token = os.getenv('TELEGRAM_BOT_TOKEN')
+        if not token:
+            raise ValueError("TELEGRAM_BOT_TOKEN environment variable not set")
         app = ApplicationBuilder().token(token).build()
         logger.info("✓ Telegram Bot连接成功")
     except Exception as e:

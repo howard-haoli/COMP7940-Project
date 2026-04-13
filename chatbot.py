@@ -27,13 +27,12 @@ def main():
     # ===== [新增] 加载环境变量支持 =====
     load_dotenv()
     
-    # Load the configuration data from file
+    # Load the configuration data from environment variables
     logging.info('INIT: Loading configuration...')
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-
+    # No longer need config.ini - using environment variables
+    
     global gpt
-    gpt = ChatGPT(config)
+    gpt = ChatGPT()  # Now uses environment variables
     
     # ===== [新增] 数据库初始化 - 根据Word文档第1.2.3节添加 =====
     logging.info('INIT: Initializing database...')
@@ -41,7 +40,10 @@ def main():
     
     # Create an Application for your bot
     logging.info('INIT: Connecting the Telegram bot...')
-    app = ApplicationBuilder().token(config['TELEGRAM']['ACCESS_TOKEN']).build()
+    token = os.getenv('TELEGRAM_BOT_TOKEN')
+    if not token:
+        raise ValueError("TELEGRAM_BOT_TOKEN environment variable not set")
+    app = ApplicationBuilder().token(token).build()
 
     # ===== [新增] 注册命令处理程序 =====
     logging.info('INIT: Registering command handlers...')

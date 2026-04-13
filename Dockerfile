@@ -4,7 +4,7 @@
 FROM python:3.10-slim
 
 # 设置工作目录
-WORKDIR /app
+WORKDIR /chatbot_project_comp7940
 
 # 复制依赖文件
 COPY requirements.txt .
@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制项目代码
-COPY . .
+COPY *.py .
 
 # 启动命令 - 运行main.py作为主程序
 CMD ["python", "main.py"]
