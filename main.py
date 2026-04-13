@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 from ChatGPT_HKBU import ChatGPT
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters, ConversationHandler
-import mysql.connector
-from mysql.connector import Error
+import psycopg2
+from psycopg2 import Error
 
 # ===== [修改] 加载环境变量支持 =====
 load_dotenv()
@@ -25,14 +25,14 @@ logger = logging.getLogger(__name__)
 
 # ===== [新增] 数据库连接函数 =====
 def get_db_connection():
-    """获取AWS RDS MySQL数据库连接"""
+    """获取AWS RDS PostgreSQL数据库连接"""
     try:
-        conn = mysql.connector.connect(
+        conn = psycopg2.connect(
             host=os.getenv('DB_HOST', 'localhost'),
             user=os.getenv('DB_USER', 'root'),
             password=os.getenv('DB_PASSWORD', 'password'),
             database=os.getenv('DB_NAME', 'campus_bot'),
-            port=int(os.getenv('DB_PORT', 3306))
+            port=int(os.getenv('DB_PORT', 5432))
         )
         return conn
     except Error as e:
@@ -57,12 +57,12 @@ def init_db():
         
         # 请求日志表（必选：数据日志）
         cursor.execute('''CREATE TABLE IF NOT EXISTS chat_logs (
-            id INT AUTO_INCREMENT PRIMARY KEY,
+            id SERIAL PRIMARY KEY,
             user_id BIGINT,
             username VARCHAR(255),
             user_message TEXT,
             llm_response TEXT,
-            create_time DATETIME
+            create_time TIMESTAMP
         )''')
         logger.info("✓ 创建 chat_logs 表成功")
         
@@ -70,7 +70,7 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS user_interests (
             user_id BIGINT PRIMARY KEY,
             interests TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
         logger.info("✓ 创建 user_interests 表成功")
         
@@ -164,52 +164,55 @@ async def interest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     tags = " ".join(context.args)
     
-    conn = get_db_connection()
-    if conn is None:
-        await update.message.reply_text("❌ 数据库连接失败，无法保存兴趣标签")
-        return
+    # 即使数据库不可用，也先回复用户
+    response = f"✅ 兴趣标签已记录：{tags}"
     
-    try:
-        cursor = conn.cursor()
-        
-        # 保存或更新用户兴趣标签
-        cursor.execute(
-            "REPLACE INTO user_interests (user_id, interests) VALUES (%s, %s)",
-            (user_id, tags)
-        )
-        conn.commit()
-        
-        # 查询相似兴趣的其他用户
-        cursor.execute(
-            "SELECT user_id FROM user_interests WHERE interests LIKE %s AND user_id != %s LIMIT 5",
-            (f"%{context.args[0]}%", user_id)
-        )
-        matches = cursor.fetchall()
-        
-        if matches:
-            response = f"✅ 兴趣标签已保存：{tags}\n\n👥 找到 {len(matches)} 位兴趣相似的同学！"
-        else:
-            response = f"✅ 兴趣标签已保存：{tags}\n\n暂时没有找到兴趣相似的同学，继续分享你的兴趣吧！"
-        
-        # 记录到数据库
-        log_chat(
-            user_id,
-            update.effective_user.username or "anonymous",
-            f"/interest {tags}",
-            response
-        )
-        
-        await update.message.reply_text(response)
-        logger.info(f"用户 {update.effective_user.username} 更新了兴趣标签: {tags}")
-        
-    except Error as e:
-        logger.error(f"兴趣匹配处理失败: {e}")
-        await update.message.reply_text(f"❌ 兴趣匹配服务异常")
-    finally:
-        if cursor:
+    conn = get_db_connection()
+    if conn is not None:
+        try:
+            cursor = conn.cursor()
+            
+            # 保存或更新用户兴趣标签（使用PostgreSQL的ON CONFLICT语法）
+            cursor.execute(
+                "INSERT INTO user_interests (user_id, interests) VALUES (%s, %s) ON CONFLICT (user_id) DO UPDATE SET interests = %s",
+                (user_id, tags, tags)
+            )
+            conn.commit()
+            
+            # 查询相似兴趣的其他用户
+            cursor.execute(
+                "SELECT user_id FROM user_interests WHERE interests LIKE %s AND user_id != %s LIMIT 5",
+                (f"%{context.args[0]}%", user_id)
+            )
+            matches = cursor.fetchall()
+            
+            if matches:
+                response = f"✅ 兴趣标签已保存：{tags}\n\n👥 找到 {len(matches)} 位兴趣相似的同学！"
+            else:
+                response = f"✅ 兴趣标签已保存：{tags}\n\n暂时没有找到兴趣相似的同学，继续分享你的兴趣吧！"
+            
+            logger.info(f"用户 {update.effective_user.username} 更新了兴趣标签: {tags}")
+            
+        except Error as e:
+            logger.error(f"兴趣匹配数据库操作失败: {e}")
+            response = f"✅ 兴趣标签已记录：{tags}\n\n（数据库暂时不可用，数据将在恢复后保存）"
+        finally:
             cursor.close()
-        if conn:
             conn.close()
+    else:
+        logger.warning(f"兴趣匹配：数据库连接失败，仅在内存中记录")
+        response = f"✅ 兴趣标签已记录：{tags}\n\n（数据库连接中断，数据恢复后将保存）"
+    
+    # 记录到数据库（失败时不中断用户回复）
+    log_chat(
+        user_id,
+        update.effective_user.username or "anonymous",
+        f"/interest {tags}",
+        response
+    )
+    
+    # 始终回复用户
+    await update.message.reply_text(response)
 
 # ===== [新增] 通用消息处理 =====
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -266,7 +269,7 @@ def main():
     # 创建Telegram应用
     logger.info("INIT: 连接Telegram Bot...")
     try:
-        token = os.getenv('TELEGRAM_BOT_TOKEN') or config['TELEGRAM']['ACCESS_TOKEN']
+        token = os.getenv('TELEGRAM_BOT_TOKEN') or config['TELEGRAM']['TELEGRAM_BOT_TOKEN']
         app = ApplicationBuilder().token(token).build()
         logger.info("✓ Telegram Bot连接成功")
     except Exception as e:

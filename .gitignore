@@ -10,3 +10,5 @@ venv/
 .vscode/
 .DS_Store
 *.log
+keypair_project.pem
+key/
