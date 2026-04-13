@@ -1,19 +1,25 @@
-# ===== [新增文件] 根据Word文档第2.1节，应用容器构建 =====
-# Docker必选要求：用于将应用容器化部署至AWS EC2
+# ===== [New File] According to Word Document Section 2.1, Application Container Build =====
+# Docker mandatory requirement: Used to containerize application for AWS EC2 deployment
 
 FROM python:3.10-slim
 
-# 设置工作目录
+# Set working directory
 WORKDIR /chatbot_project_comp7940
 
-# 复制依赖文件
+# Copy dependency file
 COPY requirements.txt .
 
-# 安装依赖
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制项目代码
-COPY *.py .
+# Copy project code and configuration
+COPY *.py ./
+COPY .env ./
 
-# 启动命令 - 运行main.py作为主程序
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash app \
+    && chown -R app:app /chatbot_project_comp7940
+USER app
+
+# Start command - run main.py as main program
 CMD ["python", "main.py"]

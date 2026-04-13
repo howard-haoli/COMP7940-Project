@@ -9,6 +9,6 @@ idna==3.11
 python-telegram-bot==22.5
 requests==2.32.5
 urllib3==2.6.2
-# ===== [修改：添加数据库支持] 根据Word文档第1.2.1节，添加PostgreSQL数据库连接 =====
+# ===== [Modified: Added database support] According to Word Document Section 1.2.1, added PostgreSQL database connection =====
 psycopg2-binary==2.9.9
 python-dotenv==1.0.1

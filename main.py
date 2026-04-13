@@ -1,5 +1,5 @@
-# ===== [新增文件] 根据Word文档第1.2.3节，机器人核心逻辑（完整版本） =====
-# 此文件基于chatbot.py和ChatGPT_HKBU.py增强，添加了数据库和完整功能
+# ===== [New File] According to Word Document Section 1.2.3, Bot Core Logic (Complete Version) =====
+# This file is enhanced based on chatbot.py and ChatGPT_HKBU.py, adding database and complete functionality
 
 import os
 import logging
@@ -11,21 +11,21 @@ from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, Con
 import psycopg2
 from psycopg2 import Error
 
-# ===== [修改] 加载环境变量支持 =====
+# ===== [Modified] Load environment variables support =====
 load_dotenv()
 
-# 配置日志
+# Configure logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# ===================== 1. 初始化连接 =====================
+# ===================== 1. Initialize Connections =====================
 
-# ===== [新增] 数据库连接函数 =====
+# ===== [New] Database connection function =====
 def get_db_connection():
-    """获取AWS RDS PostgreSQL数据库连接"""
+    """Get AWS RDS PostgreSQL database connection"""
     try:
         conn = psycopg2.connect(
             host=os.getenv('DB_HOST', 'localhost'),
@@ -36,26 +36,26 @@ def get_db_connection():
         )
         return conn
     except Error as e:
-        logger.error(f"数据库连接失败: {e}")
+        logger.error(f"Database connection failed: {e}")
         return None
 
-# 全局LLM客户端
+# Global LLM client
 gpt = None
 
-# ===================== 2. 数据库初始化 =====================
+# ===================== 2. Database Initialization =====================
 
-# ===== [新增] 初始化数据库表结构 =====
+# ===== [New] Initialize database table structure =====
 def init_db():
-    """首次运行时创建数据库表"""
+    """Create database tables on first run"""
     conn = get_db_connection()
     if conn is None:
-        logger.warning("数据库未连接，跳过表初始化")
+        logger.warning("Database not connected, skipping table initialization")
         return
-    
+
     try:
         cursor = conn.cursor()
-        
-        # 请求日志表（必选：数据日志）
+
+        # Chat logs table (Required: Data logging)
         cursor.execute('''CREATE TABLE IF NOT EXISTS chat_logs (
             id SERIAL PRIMARY KEY,
             user_id BIGINT,
@@ -64,34 +64,34 @@ def init_db():
             llm_response TEXT,
             create_time TIMESTAMP
         )''')
-        logger.info("✓ 创建 chat_logs 表成功")
-        
-        # 用户兴趣表（兴趣匹配）
+        logger.info("✓ Successfully created chat_logs table")
+
+        # User interests table (Interest matching)
         cursor.execute('''CREATE TABLE IF NOT EXISTS user_interests (
             user_id BIGINT PRIMARY KEY,
             interests TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )''')
-        logger.info("✓ 创建 user_interests 表成功")
-        
+        logger.info("✓ Successfully created user_interests table")
+
         conn.commit()
         cursor.close()
     except Error as e:
-        logger.error(f"创建表失败: {e}")
+        logger.error(f"Failed to create tables: {e}")
     finally:
         if conn:
             conn.close()
 
-# ===================== 3. 工具函数 =====================
+# ===================== 3. Utility Functions =====================
 
-# ===== [新增] 日志写入云数据库函数 =====
+# ===== [New] Log chat to cloud database function =====
 def log_chat(user_id: int, username: str, user_msg: str, llm_msg: str):
-    """将对话日志写入AWS RDS MySQL"""
+    """Write conversation logs to AWS RDS PostgreSQL"""
     conn = get_db_connection()
     if conn is None:
-        logger.warning("无法记录日志：数据库连接失败")
+        logger.warning("Unable to log: Database connection failed")
         return
-    
+
     try:
         cursor = conn.cursor()
         cursor.execute(
@@ -100,195 +100,195 @@ def log_chat(user_id: int, username: str, user_msg: str, llm_msg: str):
         )
         conn.commit()
         cursor.close()
-        logger.info(f"✓ 日志已记录 (用户: {username})")
+        logger.info(f"✓ Log recorded (User: {username})")
     except Error as e:
-        logger.error(f"日志记录失败: {e}")
+        logger.error(f"Log recording failed: {e}")
     finally:
         if conn:
             conn.close()
 
-# ===================== 4. Telegram 命令处理 =====================
+# ===================== 4. Telegram Command Handling =====================
 
-# ===== [新增] /start 启动命令 =====
+# ===== [New] /start command =====
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """启动命令处理"""
-    welcome_msg = """👋 校园助手已启动！
+    """Handle start command"""
+    welcome_msg = """👋 Campus Assistant Started!
 
-📚 主要功能：
-• /course <问题> - 课程问答
-• /interest <标签> - 保存兴趣标签
-• 直接发送消息 - 通用问答
+📚 Main Features:
+• /course <question> - Course Q&A
+• /interest <tags> - Save interest tags
+• Send messages directly - General Q&A
 
-例如：
-/course 数据结构考什么
-/interest 编程 健身
+Examples:
+/course What is tested in data structures
+/interest programming fitness
 """
     await update.message.reply_text(welcome_msg)
-    logger.info(f"用户 {update.effective_user.username} 启动了机器人")
+    logger.info(f"User {update.effective_user.username} started the bot")
 
-# ===== [新增] /course 课程问答命令 =====
+# ===== [New] /course command =====
 async def course(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """课程问答处理"""
+    """Handle course Q&A"""
     if not context.args:
-        await update.message.reply_text("📚 用法：/course <你的课程问题>\n\n例如：/course 数据结构考什么")
+        await update.message.reply_text("📚 Usage: /course <your course question>\n\nExample: /course What is tested in data structures")
         return
-    
+
     question = " ".join(context.args)
-    loading_msg = await update.message.reply_text("🤔 正在查询课程信息...")
-    
+    loading_msg = await update.message.reply_text("🤔 Querying course information...")
+
     try:
-        # 调用LLM生成答案
-        prompt = f"作为校园助手，回答这个课程问题（简洁专业）：{question}"
+        # Call LLM to generate answer
+        prompt = f"As a campus assistant, answer this course question (concise and professional): {question}"
         answer = gpt.submit(prompt)
-        
-        # 记录到数据库
+
+        # Record to database
         log_chat(
             update.effective_user.id,
             update.effective_user.username or "anonymous",
             f"/course {question}",
             answer
         )
-        
+
         await loading_msg.edit_text(answer)
     except Exception as e:
-        logger.error(f"课程问答失败: {e}")
-        await loading_msg.edit_text(f"❌ 课程问答服务异常：{str(e)}")
+        logger.error(f"Course Q&A failed: {e}")
+        await loading_msg.edit_text(f"❌ Course Q&A service error: {str(e)}")
 
-# ===== [新增] /interest 兴趣匹配命令 =====
+# ===== [New] /interest command =====
 async def interest(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """兴趣匹配处理"""
+    """Handle interest matching"""
     if not context.args:
-        await update.message.reply_text("🎯 用法：/interest <兴趣标签1> <兴趣标签2> ...\n\n例如：/interest 编程 健身 摄影")
+        await update.message.reply_text("🎯 Usage: /interest <interest tag1> <interest tag2> ...\n\nExample: /interest programming fitness photography")
         return
-    
+
     user_id = update.effective_user.id
     tags = " ".join(context.args)
-    
-    # 即使数据库不可用，也先回复用户
-    response = f"✅ 兴趣标签已记录：{tags}"
-    
+
+    # Reply to user even if database is unavailable
+    response = f"✅ Interest tags recorded: {tags}"
+
     conn = get_db_connection()
     if conn is not None:
         try:
             cursor = conn.cursor()
-            
-            # 保存或更新用户兴趣标签（使用PostgreSQL的ON CONFLICT语法）
+
+            # Save or update user interest tags (using PostgreSQL ON CONFLICT syntax)
             cursor.execute(
                 "INSERT INTO user_interests (user_id, interests) VALUES (%s, %s) ON CONFLICT (user_id) DO UPDATE SET interests = %s",
                 (user_id, tags, tags)
             )
             conn.commit()
-            
-            # 查询相似兴趣的其他用户
+
+            # Query other users with similar interests
             cursor.execute(
                 "SELECT user_id FROM user_interests WHERE interests LIKE %s AND user_id != %s LIMIT 5",
                 (f"%{context.args[0]}%", user_id)
             )
             matches = cursor.fetchall()
-            
+
             if matches:
-                response = f"✅ 兴趣标签已保存：{tags}\n\n👥 找到 {len(matches)} 位兴趣相似的同学！"
+                response = f"✅ Interest tags saved: {tags}\n\n👥 Found {len(matches)} classmates with similar interests!"
             else:
-                response = f"✅ 兴趣标签已保存：{tags}\n\n暂时没有找到兴趣相似的同学，继续分享你的兴趣吧！"
-            
-            logger.info(f"用户 {update.effective_user.username} 更新了兴趣标签: {tags}")
-            
+                response = f"✅ Interest tags saved: {tags}\n\nNo classmates with similar interests found yet, keep sharing your interests!"
+
+            logger.info(f"User {update.effective_user.username} updated interest tags: {tags}")
+
         except Error as e:
-            logger.error(f"兴趣匹配数据库操作失败: {e}")
-            response = f"✅ 兴趣标签已记录：{tags}\n\n（数据库暂时不可用，数据将在恢复后保存）"
+            logger.error(f"Interest matching database operation failed: {e}")
+            response = f"✅ Interest tags recorded: {tags}\n\n(Database temporarily unavailable, data will be saved when restored)"
         finally:
             cursor.close()
             conn.close()
     else:
-        logger.warning(f"兴趣匹配：数据库连接失败，仅在内存中记录")
-        response = f"✅ 兴趣标签已记录：{tags}\n\n（数据库连接中断，数据恢复后将保存）"
-    
-    # 记录到数据库（失败时不中断用户回复）
+        logger.warning(f"Interest matching: Database connection failed, recorded in memory only")
+        response = f"✅ Interest tags recorded: {tags}\n\n(Database connection interrupted, data will be saved when restored)"
+
+    # Record to database (don't interrupt user reply on failure)
     log_chat(
         user_id,
         update.effective_user.username or "anonymous",
         f"/interest {tags}",
         response
     )
-    
-    # 始终回复用户
+
+    # Always reply to user
     await update.message.reply_text(response)
 
-# ===== [新增] 通用消息处理 =====
+# ===== [New] General message handling =====
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """处理普通文本消息"""
+    """Handle regular text messages"""
     user_msg = update.message.text
-    loading_msg = await update.message.reply_text("🤖 思考中...")
-    
+    loading_msg = await update.message.reply_text("🤖 Thinking...")
+
     try:
-        # 调用LLM生成回复
+        # Call LLM to generate response
         response = gpt.submit(user_msg)
-        
-        # 记录到数据库
+
+        # Record to database
         log_chat(
             update.effective_user.id,
             update.effective_user.username or "anonymous",
             user_msg,
             response
         )
-        
+
         await loading_msg.edit_text(response)
     except Exception as e:
-        logger.error(f"消息处理失败: {e}")
-        await loading_msg.edit_text(f"❌ 服务异常：{str(e)}")
+        logger.error(f"Message processing failed: {e}")
+        await loading_msg.edit_text(f"❌ Service error: {str(e)}")
 
-# ===================== 5. 主程序启动 =====================
+# ===================== 5. Main Program Startup =====================
 
 def main():
-    """主程序入口"""
+    """Main program entry point"""
     global gpt
-    
+
     logger.info("=" * 50)
-    logger.info("INIT: 校园助手Telegram机器人启动中...")
+    logger.info("INIT: Campus Assistant Telegram Bot Starting...")
     logger.info("=" * 50)
-    
-    # 加载配置
-    logger.info("INIT: 加载配置文件...")
+
+    # Load configuration
+    logger.info("INIT: Loading configuration file...")
     try:
-        # ===== [修改] 初始化ChatGPT客户端 - 现在使用环境变量 =====
-        logger.info("INIT: 初始化ChatGPT客户端...")
-        gpt = ChatGPT()  # 不再需要传递config参数
-        logger.info("✓ ChatGPT客户端初始化成功")
+        # ===== [Modified] Initialize ChatGPT client - now uses environment variables =====
+        logger.info("INIT: Initializing ChatGPT client...")
+        gpt = ChatGPT()  # No longer need to pass config parameter
+        logger.info("✓ ChatGPT client initialization successful")
     except Exception as e:
-        logger.error(f"✗ 配置加载失败: {e}")
+        logger.error(f"✗ Configuration loading failed: {e}")
         return
-    
-    # ===== [新增] 初始化数据库 =====
-    logger.info("INIT: 初始化数据库...")
+
+    # ===== [New] Initialize database =====
+    logger.info("INIT: Initializing database...")
     init_db()
-    
-    # 创建Telegram应用
-    logger.info("INIT: 连接Telegram Bot...")
+
+    # Create Telegram application
+    logger.info("INIT: Connecting Telegram Bot...")
     try:
         token = os.getenv('TELEGRAM_BOT_TOKEN')
         if not token:
             raise ValueError("TELEGRAM_BOT_TOKEN environment variable not set")
         app = ApplicationBuilder().token(token).build()
-        logger.info("✓ Telegram Bot连接成功")
+        logger.info("✓ Telegram Bot connection successful")
     except Exception as e:
-        logger.error(f"✗ Telegram Bot连接失败: {e}")
+        logger.error(f"✗ Telegram Bot connection failed: {e}")
         return
-    
-    # ===== [新增] 注册命令处理程序 =====
-    logger.info("INIT: 注册命令处理程序...")
+
+    # ===== [New] Register command handlers =====
+    logger.info("INIT: Registering command handlers...")
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("course", course))
     app.add_handler(CommandHandler("interest", interest))
-    
-    # ===== [修改] 注册消息处理程序 =====
+
+    # ===== [Modified] Register message handlers =====
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
-    
-    logger.info("✓ 命令处理程序注册成功")
+
+    logger.info("✓ Command handlers registration successful")
     logger.info("=" * 50)
-    logger.info("INIT: 初始化完成！机器人已启动")
+    logger.info("INIT: Initialization complete! Bot has started")
     logger.info("=" * 50)
-    
-    # 启动机器人
+
+    # Start the bot
     app.run_polling()
 
 if __name__ == '__main__':

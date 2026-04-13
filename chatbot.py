@@ -2,9 +2,9 @@
 This program requires the following modules:
 - python-telegram-bot==22.5
 - urllib3==2.6.2
-# ===== [修改] 根据Word文档要求添加以下依赖 =====
-- mysql-connector-python==8.4.0  （数据库支持）
-- python-dotenv==1.0.1           （环境变量支持）
+# ===== [Modified] Added the following dependencies according to Word document requirements =====
+- mysql-connector-python==8.4.0  (Database support)
+- python-dotenv==1.0.1           (Environment variable support)
 '''
 from ChatGPT_HKBU import ChatGPT
 gpt = None
@@ -12,7 +12,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters, CommandHandler
 import configparser
 import logging
-# ===== [新增] 数据库和环境变量支持 =====
+# ===== [New] Database and environment variable support =====
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -24,7 +24,7 @@ def main():
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                         level=logging.INFO)
     
-    # ===== [新增] 加载环境变量支持 =====
+    # ===== [New] Load environment variable support =====
     load_dotenv()
     
     # Load the configuration data from environment variables
@@ -34,7 +34,7 @@ def main():
     global gpt
     gpt = ChatGPT()  # Now uses environment variables
     
-    # ===== [新增] 数据库初始化 - 根据Word文档第1.2.3节添加 =====
+    # ===== [New] Database initialization - Added according to Word Document Section 1.2.3 =====
     logging.info('INIT: Initializing database...')
     init_db()
     
@@ -45,7 +45,7 @@ def main():
         raise ValueError("TELEGRAM_BOT_TOKEN environment variable not set")
     app = ApplicationBuilder().token(token).build()
 
-    # ===== [新增] 注册命令处理程序 =====
+    # ===== [New] Register command handlers =====
     logging.info('INIT: Registering command handlers...')
     app.add_handler(CommandHandler("start", handle_start))
     app.add_handler(CommandHandler("course", handle_course))
@@ -59,9 +59,9 @@ def main():
     logging.info('INIT: Initialization done!')
     app.run_polling()
 
-# ===== [新增] 数据库连接函数 =====
+# ===== [New] Database connection function =====
 def get_db_connection():
-    """获取数据库连接"""
+    """Get database connection"""
     try:
         return mysql.connector.connect(
             host=os.getenv('DB_HOST', 'localhost'),
@@ -74,9 +74,9 @@ def get_db_connection():
         logging.error(f"Database connection failed: {e}")
         return None
 
-# ===== [新增] 初始化数据库表结构 =====
+# ===== [New] Initialize database table structure =====
 def init_db():
-    """初始化数据库表"""
+    """Initialize database tables"""
     conn = get_db_connection()
     if not conn:
         logging.warning("Database not available, skipping table initialization")
@@ -84,7 +84,7 @@ def init_db():
     
     try:
         cursor = conn.cursor()
-        # 聊天日志表
+        # Chat logs table
         cursor.execute('''CREATE TABLE IF NOT EXISTS chat_logs (
             id INT AUTO_INCREMENT PRIMARY KEY,
             user_id BIGINT,
@@ -93,7 +93,7 @@ def init_db():
             llm_response TEXT,
             create_time DATETIME
         )''')
-        # 用户兴趣表 - 根据Word文档用户兴趣匹配功能
+        # User interests table - According to Word document user interest matching function
         cursor.execute('''CREATE TABLE IF NOT EXISTS user_interests (
             user_id BIGINT PRIMARY KEY,
             interests TEXT,
@@ -107,9 +107,9 @@ def init_db():
         cursor.close()
         conn.close()
 
-# ===== [新增] 日志记录函数 =====
+# ===== [New] Log recording function =====
 def log_chat(user_id: int, username: str, user_msg: str, llm_msg: str):
-    """将聊天记录存储到AWS RDS数据库 - 根据Word文档必选要求"""
+    """Store chat records in AWS RDS database - According to Word document mandatory requirements"""
     conn = get_db_connection()
     if not conn:
         logging.warning("Cannot log chat: database not available")
@@ -129,44 +129,44 @@ def log_chat(user_id: int, username: str, user_msg: str, llm_msg: str):
         cursor.close()
         conn.close()
 
-# ===== [新增] /start 命令处理 =====
+# ===== [New] /start command handling =====
 async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """处理/start命令"""
-    welcome_msg = """👋 校园助手已启动！
+    """Handle /start command"""
+    welcome_msg = """👋 Campus Assistant Started!
 
-📚 主要功能：
-• /course <问题> - 课程问答
-• /interest <标签> - 保存兴趣标签
-• 直接发送消息 - 通用问答
+📚 Main Features:
+• /course <question> - Course Q&A
+• /interest <tag> - Save interest tags
+• Send message directly - General Q&A
 """
     await update.message.reply_text(welcome_msg)
 
-# ===== [新增] /course 课程问答命令 - 根据Word文档功能需求 =====
+# ===== [New] /course course Q&A command - According to Word document functional requirements =====
 async def handle_course(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """处理/course课程问答命令"""
+    """Handle /course course Q&A command"""
     if not context.args:
-        await update.message.reply_text("用法：/course <你的课程问题>")
+        await update.message.reply_text("Usage: /course <your course question>")
         return
     
     question = " ".join(context.args)
-    loading_msg = await update.message.reply_text("思考中...")
+    loading_msg = await update.message.reply_text("Thinking...")
     
     try:
-        prompt = f"作为校园助手，回答这个课程问题：{question}"
+        prompt = f"As a campus assistant, answer this course question: {question}"
         answer = gpt.submit(prompt)
         
-        # ===== [修改] 记录到数据库 =====
+        # ===== [Modified] Record to database =====
         log_chat(update.effective_user.id, update.effective_user.username or "anonymous", f"/course {question}", answer)
         
         await loading_msg.edit_text(answer)
     except Exception as e:
-        await loading_msg.edit_text(f"错误：{str(e)}")
+        await loading_msg.edit_text(f"Error: {str(e)}")
 
-# ===== [新增] /interest 兴趣匹配命令 - 根据Word文档功能需求 =====
+# ===== [New] /interest interest matching command - According to Word document functional requirements =====
 async def handle_interest(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """处理/interest兴趣标签命令"""
+    """Handle /interest interest tag command"""
     if not context.args:
-        await update.message.reply_text("用法：/interest <兴趣标签1> <兴趣标签2> ...")
+        await update.message.reply_text("Usage: /interest <interest tag1> <interest tag2> ...")
         return
     
     user_id = update.effective_user.id
@@ -174,47 +174,47 @@ async def handle_interest(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     conn = get_db_connection()
     if not conn:
-        await update.message.reply_text("数据库连接失败")
+        await update.message.reply_text("Database connection failed")
         return
     
     try:
         cursor = conn.cursor()
-        # 保存用户兴趣
+        # Save user interests
         cursor.execute(
             "REPLACE INTO user_interests (user_id, interests) VALUES (%s, %s)",
             (user_id, tags)
         )
         conn.commit()
         
-        # 查询兴趣相似的用户 - 根据Word文档兴趣匹配功能
+        # Query users with similar interests - According to Word document interest matching function
         cursor.execute(
             "SELECT user_id FROM user_interests WHERE interests LIKE %s AND user_id != %s LIMIT 5",
             (f"%{context.args[0]}%", user_id)
         )
         matches = cursor.fetchall()
         
-        response = f"✅ 兴趣标签已保存：{tags}\n找到 {len(matches)} 位相似用户" if matches else f"✅ 兴趣标签已保存：{tags}\n暂无相似用户"
+        response = f"✅ Interest tags saved: {tags}\nFound {len(matches)} similar users" if matches else f"✅ Interest tags saved: {tags}\nNo similar users found yet"
         
-        # ===== [修改] 记录到数据库 =====
+        # ===== [Modified] Record to database =====
         log_chat(user_id, update.effective_user.username or "anonymous", f"/interest {tags}", response)
         
         await update.message.reply_text(response)
     except mysql.connector.Error as e:
-        await update.message.reply_text(f"数据库错误：{str(e)}")
+        await update.message.reply_text(f"Database error: {str(e)}")
     finally:
         cursor.close()
         conn.close()
 
-# ===== [修改] 消息回调处理函数 - 添加数据库日志记录 =====
+# ===== [Modified] Message callback handler function - Added database logging =====
 async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # ===== [修改] 显示具体处理中提示 =====
+    # ===== [Modified] Show specific processing prompt =====
     logging.info("UPDATE: " + str(update))
     loading_message = await update.message.reply_text('Thinking...')
 
     # send the user message to the ChatGPT client
     response = gpt.submit(update.message.text)
     
-    # ===== [新增] 将对话记录存储到数据库 - 根据Word文档数据日志必选要求 =====
+    # ===== [New] Store conversation records in database - According to Word document data logging mandatory requirements =====
     log_chat(
         update.effective_user.id,
         update.effective_user.username or "anonymous",

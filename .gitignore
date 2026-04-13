@@ -1,4 +1,4 @@
-# ===== [新增文件] 根据Word文档第1.2.4节，Git忽略敏感文件 =====
+# ===== [New File] According to Word Document Section 1.2.4, Git ignore sensitive files =====
 .env
 config.ini
 __pycache__/

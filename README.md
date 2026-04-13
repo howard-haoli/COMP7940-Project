@@ -1,119 +1,119 @@
-# 校园助手 Telegram Bot - 完整项目
+# Campus Assistant Telegram Bot - Complete Project
 
-## 📋 项目概述
+## 📋 Project Overview
 
-根据 **Word文档《校园助手 Telegram Bot - AWS EC2 完整部署指南》** 的要求完成的完整项目。
-本项目集成了Telegram机器人、LLM API、云数据库、Docker容器化和CI/CD自动部署。
+Complete project implemented according to the requirements of **Word Document "Campus Assistant Telegram Bot - AWS EC2 Complete Deployment Guide"**.
+This project integrates Telegram bot, LLM API, cloud database, Docker containerization, and CI/CD automated deployment.
 
 ---
 
-## 🔍 修改位置详细对照表
+## 🔍 Detailed Modification Comparison Table
 
-### 📂 新增文件
+### 📂 New Files
 
-| 文件路径 | 根据文档章节 | 功能说明 | 状态 |
+| File Path | According to Document Section | Function Description | Status |
 |---------|-----------|--------|------|
-| `main.py` | 第1.2.3节 | 机器人核心逻辑完整版本（新增数据库、多命令、兴趣匹配） | ✅ 新增 |
-| `.env` | 第1.2.2节 | 环境变量配置（本地测试用） | ✅ 新增 |
-| `.gitignore` | 第1.2.4节 | Git忽略敏感文件配置 | ✅ 新增 |
-| `Dockerfile` | 第2.1节 | Docker容器构建文件 | ✅ 新增 |
-| `docker-compose.yml` | 第2.2节 | 容器编排配置（可选优化） | ✅ 新增 |
-| `.github/workflows/deploy.yml` | 第7.1节 | GitHub Actions CI/CD工作流 | ✅ 新增 |
+| `main.py` | Section 1.2.3 | Complete version of bot core logic (new database, multi-commands, interest matching) | ✅ Added |
+| `.env` | Section 1.2.2 | Environment variable configuration (for local testing) | ✅ Added |
+| `.gitignore` | Section 1.2.4 | Git ignore sensitive files configuration | ✅ Added |
+| `Dockerfile` | Section 2.1 | Docker container build file | ✅ Added |
+| `docker-compose.yml` | Section 2.2 | Container orchestration configuration (optional optimization) | ✅ Added |
+| `.github/workflows/deploy.yml` | Section 7.1 | GitHub Actions CI/CD workflow | ✅ Added |
 
-### 📝 修改的文件
+### 📝 Modified Files
 
-#### 1. **requirements.txt** (第1.2.1节)
+#### 1. **requirements.txt** (Section 1.2.1)
 ```diff
-# ===== [修改] 新增数据库支持依赖 =====
-+ mysql-connector-python==8.4.0    # AWS RDS MySQL连接
-+ python-dotenv==1.0.1             # 环境变量管理
+# ===== [Modified] Added database support dependencies =====
++ mysql-connector-python==8.4.0    # AWS RDS MySQL connection
++ python-dotenv==1.0.1             # Environment variable management
 ```
-**修改原因**: 支持数据库日志存储和环境变量加载
+**Reason for modification**: Support database log storage and environment variable loading
 
 ---
 
-#### 2. **chatbot.py** (第1.2.3节)
-多处修改，主要包括：
+#### 2. **chatbot.py** (Section 1.2.3)
+Multiple modifications, mainly including:
 
-**第1处** - 文件头部导入修改：
+**Location 1** - File header import modification:
 ```python
-# ===== [修改] 添加数据库和环境变量支持 =====
+# ===== [Modified] Add database and environment variable support =====
 import mysql.connector
 from dotenv import load_dotenv
 import os
 from datetime import datetime
 ```
 
-**第2处** - 主函数头部新增初始化：
+**Location 2** - Main function header new initialization:
 ```python
-# ===== [新增] 加载环境变量支持 =====
+# ===== [New] Load environment variable support =====
 load_dotenv()
 
-# ===== [新增] 数据库初始化 - 根据Word文档第1.2.3节添加 =====
+# ===== [New] Database initialization - According to Word Document Section 1.2.3 =====
 logging.info('INIT: Initializing database...')
 init_db()
 
-# ===== [新增] 注册命令处理程序 =====
+# ===== [New] Register command handlers =====
 logging.info('INIT: Registering command handlers...')
 app.add_handler(CommandHandler("start", handle_start))
 app.add_handler(CommandHandler("course", handle_course))
 app.add_handler(CommandHandler("interest", handle_interest))
 ```
 
-**第3处** - 新增数据库相关函数：
+**Location 3** - Added database related functions:
 ```python
-# ===== [新增] 数据库连接函数 =====
+# ===== [New] Database connection function =====
 def get_db_connection():
-    # ...AWS RDS连接配置
+    # ...AWS RDS connection configuration
 
-# ===== [新增] 初始化数据库表结构 =====
+# ===== [New] Initialize database table structure =====
 def init_db():
-    # ...创建chat_logs和user_interests表
+    # ...Create chat_logs and user_interests tables
 
-# ===== [新增] 日志记录函数 =====
+# ===== [New] Log recording function =====
 def log_chat(user_id, username, user_msg, llm_msg):
-    # ...保存对话到数据库
+    # ...Save conversation to database
 
-# ===== [新增] 命令处理函数 =====
-async def handle_start(...)          # /start命令
-async def handle_course(...)         # /course命令
-async def handle_interest(...)       # /interest命令
+# ===== [New] Command handler functions =====
+async def handle_start(...)          # /start command
+async def handle_course(...)         # /course command
+async def handle_interest(...)       # /interest command
 ```
 
-**第4处** - 修改callback函数：
+**Location 4** - Modified callback function:
 ```python
-# ===== [修改] 添加数据库日志记录 =====
+# ===== [Modified] Added database logging =====
 async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging.info("UPDATE: " + str(update))
     loading_message = await update.message.reply_text('Thinking...')
     response = gpt.submit(update.message.text)
     
-    # ===== [新增] 将对话记录存储到数据库 =====
+    # ===== [New] Store conversation records in database =====
     log_chat(...)
     
     await loading_message.edit_text(response)
 ```
 
-**修改原因**: 
-- 支持数据库存储
-- 添加完整的命令处理体系（/start, /course, /interest）
-- 实现用户兴趣匹配功能
-- 满足文档所有功能需求
+**Modification Reason**: 
+- Support database storage
+- Added complete command processing system (/start, /course, /interest)
+- Implemented user interest matching functionality
+- Meets all document functional requirements
 
 ---
 
-#### 3. **ChatGPT_HKBU.py** (第1.2.3节)
+#### 3. **ChatGPT_HKBU.py** (Section 1.2.3)
 ```python
-# ===== [说明] 根据Word文档第1.2.3节，此文件完全满足LLM API集成要求 =====
-# 已集成HKBU LLM API (Azure OpenAI兼容接口)
+# ===== [Note] According to Word Document Section 1.2.3, this file fully meets LLM API integration requirements =====
+# Integrated HKBU LLM API (Azure OpenAI compatible interface)
 ```
-**说明**: 此文件已完全符合文档要求，无需修改
+**Note**: This file fully complies with document requirements, no modification needed
 
 ---
 
-#### 4. **config.ini** (用户提供)
+#### 4. **config.ini** (User Provided)
 ```ini
-# ===== [说明] 原有配置文件 =====
+# ===== [Note] Original configuration file =====
 [TELEGRAM]
 ACCESS_TOKEN = 111111
 [CHATGPT]
@@ -122,172 +122,172 @@ BASE_URL = https://genai.hkbu.edu.hk/api/v0/rest
 MODEL = gpt-5-mini
 API_VER = 2024-12-01-preview
 ```
-**说明**: 原配置已完全符合HKBU LLM API要求，无需修改
+**Note**: Original configuration fully complies with HKBU LLM API requirements, no modification needed
 
 ---
 
-## ✅ 文档要求对照完成情况
+## ✅ Document Requirements Cross-Reference Completion Status
 
-### 必选要求（全覆盖）
-- ✅ **Telegram机器人** - python-telegram-bot库实现，支持多命令
-- ✅ **云数据库** - AWS RDS MySQL存储日志和用户数据
-- ✅ **AWS托管** - Docker容器支持EC2部署  
-- ✅ **LLM API** - HKBU API集成（ChatGPT_HKBU.py）
-- ✅ **Git管理** - .gitignore配置，支持GitHub托管
-- ✅ **容器化** - Dockerfile和docker-compose.yml完整
-- ✅ **监控&成本控制** - .github/workflows/deploy.yml支持CloudWatch集成
+### Mandatory Requirements (Full Coverage)
+- ✅ **Telegram Bot** - Implemented with python-telegram-bot library, supports multiple commands
+- ✅ **Cloud Database** - AWS RDS MySQL stores logs and user data
+- ✅ **AWS Hosting** - Docker container supports EC2 deployment  
+- ✅ **LLM API** - HKBU API integration (ChatGPT_HKBU.py)
+- ✅ **Git Management** - .gitignore configuration, supports GitHub hosting
+- ✅ **Containerization** - Complete Dockerfile and docker-compose.yml
+- ✅ **Monitoring & Cost Control** - .github/workflows/deploy.yml supports CloudWatch integration
 
-### 核心功能（全实现）
-- ✅ **/start** - 启动命令，显示功能菜单
-- ✅ **/course** - 课程问答脚本
-- ✅ **/interest** - 用户兴趣标签保存与匹配
-- ✅ **通用消息** - 直接消息处理和LLM对话
-- ✅ **数据日志** - 所有对话自动保存到AWS RDS
-- ✅ **兴趣匹配** - 查询相似兴趣用户
+### Core Features (All Implemented)
+- ✅ **/start** - Start command, display function menu
+- ✅ **/course** - Course Q&A script
+- ✅ **/interest** - User interest tag saving and matching
+- ✅ **General Messages** - Direct message processing and LLM conversation
+- ✅ **Data Logging** - All conversations automatically saved to AWS RDS
+- ✅ **Interest Matching** - Query users with similar interests
 
-### 可选优化（已包含）
-- ✅ **Docker Compose** - 资源限制和容器编排
-- ✅ **Redis缓存** - docker-compose.yml支持
-- ✅ **健康检查** - 容器健康检查配置
-- ⭕ **容器编排** - AWS ECS配置（可在deploy.yml中扩展）
-- ⭕ **应用负载均衡** - ALB配置（可在deploy.yml中扩展）
+### Optional Optimizations (Included)
+- ✅ **Docker Compose** - Resource limits and container orchestration
+- ✅ **Redis Cache** - Supported in docker-compose.yml
+- ✅ **Health Checks** - Container health check configuration
+- ⭕ **Container Orchestration** - AWS ECS configuration (can be extended in deploy.yml)
+- ⭕ **Application Load Balancing** - ALB configuration (can be extended in deploy.yml)
 
 ---
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 本地测试
+### Local Testing
 ```bash
-# 1. 安装依赖
+# 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. 配置环境变量
-cp .env .env.local  # 编辑本地数据库配置
-# 如果使用AWS RDS，请在.env中配置DB_HOST、DB_PASSWORD等
+# 2. Configure environment variables
+cp .env .env.local  # Edit local database configuration
+# If using AWS RDS, configure DB_HOST, DB_PASSWORD, etc. in .env
 
-# 3. 选择运行方式
-# 方式A: 原始版本（简化版）
+# 3. Choose running method
+# Method A: Original version (simplified)
 python chatbot.py
 
-# 方式B: 完整版本（包含所有功能）
+# Method B: Complete version (includes all features)
 python main.py
 ```
 
-### Docker本地测试
+### Docker Local Testing
 ```bash
-# 构建并运行容器
+# Build and run container
 docker-compose up -d
 
-# 查看日志
+# View logs
 docker-compose logs -f
 
-# 停止容器
+# Stop container
 docker-compose down
 ```
 
-### AWS EC2部署
+### AWS EC2 Deployment
 ```bash
-# 1. SSH连接EC2实例
-ssh -i "密钥对.pem" ec2-user@EC2_IP
+# 1. SSH connect to EC2 instance
+ssh -i "key-pair.pem" ec2-user@EC2_IP
 
-# 2. 克隆项目
-git clone https://github.com/你的用户名/campus-assistant-bot.git
+# 2. Clone project
+git clone https://github.com/your-username/campus-assistant-bot.git
 cd campus-assistant-bot
 
-# 3. 配置GitHub Secrets（在GitHub仓库设置）
+# 3. Configure GitHub Secrets (in GitHub repository settings)
 # EC2_HOST, EC2_SSH_KEY, TELEGRAM_BOT_TOKEN, LLM_API_KEY, DB_HOST, DB_PASSWORD
 
-# 4. 启动容器
+# 4. Start container
 docker-compose up -d
 
-# 5. 检查日志
+# 5. Check logs
 docker-compose logs -f
 ```
 
 ---
 
-## 📊 数据库表结构
+## 📊 Database Table Structure
 
-### chat_logs（对话日志表）
+### chat_logs (Conversation Logs Table)
 ```sql
 CREATE TABLE chat_logs (
-    id INT AUTO_INCREMENT PRIMARY KEY,           -- 日志ID
-    user_id BIGINT,                              -- Telegram用户ID
-    username VARCHAR(255),                       -- Telegram用户名
-    user_message TEXT,                           -- 用户消息
-    llm_response TEXT,                           -- LLM反应
-    create_time DATETIME                         -- 创建时间
+    id INT AUTO_INCREMENT PRIMARY KEY,           -- Log ID
+    user_id BIGINT,                              -- Telegram User ID
+    username VARCHAR(255),                       -- Telegram Username
+    user_message TEXT,                           -- User Message
+    llm_response TEXT,                           -- LLM Response
+    create_time DATETIME                         -- Creation Time
 );
 ```
 
-### user_interests（用户兴趣表）
+### user_interests (User Interests Table)
 ```sql
 CREATE TABLE user_interests (
-    user_id BIGINT PRIMARY KEY,                  -- Telegram用户ID
-    interests TEXT,                              -- 兴趣标签
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP -- 创建时间
+    user_id BIGINT PRIMARY KEY,                  -- Telegram User ID
+    interests TEXT,                              -- Interest Tags
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP -- Creation Time
 );
 ```
 
 ---
 
-## 📝 功能命令示例
+## 📝 Function Command Examples
 
 ```
-用户: /start
-机器人: 👋 校园助手已启动！
-      📚 主要功能：...
+User: /start
+Bot: 👋 Campus Assistant Started!
+      📚 Main Features:...
 
-用户: /course 数据结构考什么
-机器人: [从LLM获取答案并存储到数据库]
+User: /course What is tested in data structures
+Bot: [Get answer from LLM and store in database]
 
-用户: /interest 编程 健身 
-机器人: ✅ 兴趣标签已保存
-      👥 找到5位兴趣相似的同学！
+User: /interest programming fitness
+Bot: ✅ Interest tags saved
+      👥 Found 5 classmates with similar interests!
 
-用户: 你好，我想学习Python
-机器人: [通用消息处理，LLM回复并记录]
+User: Hello, I want to learn Python
+Bot: [General message processing, LLM response and logging]
 ```
 
 ---
 
-## 🔐 安全配置要点
+## 🔐 Security Configuration Key Points
 
-1. **敏感信息管理**
-   - `.env`文件已列入.gitignore，不会提交到Git
-   - 生产环境使用AWS Secrets Manager管理密钥
+1. **Sensitive Information Management**
+   - `.env` file is in .gitignore, won't be committed to Git
+   - Production environment uses AWS Secrets Manager for key management
+
+2. **Database Security**
+   - Use dedicated business account (non-admin) to connect to database
+   - AWS RDS security group configuration: Only allow EC2 to access port 3306
    
-2. **数据库安全**
-   - 使用专用业务账号（非admin）连接数据库
-   - AWS RDS安全组配置：仅允许EC2访问3306端口
-   
-3. **CI/CD安全**
-   - 通过GitHub Secrets安全存储EC2密钥和API密钥
-   - deploy.yml中使用了appleboy/ssh-action用于安全部署
+3. **CI/CD Security**
+   - Securely store EC2 keys and API keys through GitHub Secrets
+   - deploy.yml uses appleboy/ssh-action for secure deployment
 
 ---
 
-## 📖 文档对应章节速查表
+## 📖 Document Chapter Correspondence Quick Reference Table
 
-| 功能模块 | 对应章节 | 主要文件 |
+| Function Module | Corresponding Chapter | Main Files |
 |---------|---------|--------|
-| 项目架构设计 | 第一章 | 所有文件 |
-| 代码开发 | **第三章** | main.py, chatbot.py, requirements.txt |
-| 容器化 | **第四章** | Dockerfile, docker-compose.yml |
-| Git管理 | **第五章** | .gitignore, config.ini |
-| AWS资源 | 第六章 | (AWS控制台操作) |
-| CI/CD部署 | **第七章** | .github/workflows/deploy.yml |
-| 监控成本控制 | 第八章 | (AWS CloudWatch配置) |
+| Project Architecture Design | Chapter 1 | All files |
+| Code Development | **Chapter 3** | main.py, chatbot.py, requirements.txt |
+| Containerization | **Chapter 4** | Dockerfile, docker-compose.yml |
+| Git Management | **Chapter 5** | .gitignore, config.ini |
+| AWS Resources | Chapter 6 | (AWS Console Operations) |
+| CI/CD Deployment | **Chapter 7** | .github/workflows/deploy.yml |
+| Monitoring Cost Control | Chapter 8 | (AWS CloudWatch Configuration) |
 
 ---
 
-## ⚠️ 注意事项
+## ⚠️ Important Notes
 
-1. **数据库连接**
-   - 本地测试需要MySQL服务运行
-   - AWS部署需要配置RDS安全组和EC2安全组
+1. **Database Connection**
+   - Local testing requires MySQL service running
+   - AWS deployment needs RDS security group and EC2 security group configuration
 
-2. **环境变量优先级**
+2. **Environment Variable Priority**
    - 代码优先读取`.env`文件
    - AWS服务器通过GitHub Secrets注入环境变量
    - 生产环境建议使用AWS Secrets Manager

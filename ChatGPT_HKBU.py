@@ -1,5 +1,5 @@
-# ===== [说明] 根据Word文档第1.2.3节，此文件完全满足LLM API集成要求 =====
-# 已集成HKBU LLM API (Azure OpenAI兼容接口)
+# ===== [Note] According to Word Document Section 1.2.3, this file fully meets LLM API integration requirements =====
+# Integrated HKBU LLM API (Azure OpenAI compatible interface)
 
 import requests
 import os
