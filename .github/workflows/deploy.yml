@@ -36,8 +36,11 @@ jobs:
 
           # ===== [According to Document Section 7.1] Deployment script =====
           script: |
-            cd /home/ec2-user/chatbot_project_comp7940/COMP7940-Project
-            git pull origin main
+            cd /home/ec2-user/chatbot_project_comp7940/
+            sudo rm -rf /home/ec2-user/chatbot_project_comp7940/COMP7940-Project
+
+            git clone https://github.com/howard-haoli/COMP7940-Project.git
+            cd COMP7940-Project
 
             # Require chatbot_project.tar to be present; load and run image from tar
             if [ -f chatbot_project.tar ]; then
