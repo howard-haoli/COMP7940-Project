@@ -36,11 +36,26 @@ jobs:
 
           # ===== [According to Document Section 7.1] Deployment script =====
           script: |
-            cd /home/ec2-user/campus-assistant-bot
+            cd /home/ec2-user/chatbot_project_comp7940
             git pull origin main
 
-            # Rebuild container and start
-            docker-compose down
-            docker-compose up -d --build
+            # Require chatbot_project.tar to be present; load and run image from tar
+            if [ -f chatbot_project.tar ]; then
+              echo "Found chatbot_project.tar — loading image..."
+              LOAD_OUTPUT=$(docker load -i chatbot_project.tar 2>&1)
+              echo "$LOAD_OUTPUT"
+              IMAGE=$(echo "$LOAD_OUTPUT" | awk -F': ' '/Loaded image/ {print $2}')
+              if [ -z "$IMAGE" ]; then
+                echo "Could not detect image name from docker load output. Exiting."
+                exit 1
+              fi
+
+              echo "Stopping and removing existing container (if any) and running new container from image: $IMAGE"
+              docker rm -f chatbot_project_container || true
+              docker run -d --restart unless-stopped --name chatbot_project_container -p 80:80 "$IMAGE"
+            else
+              echo "chatbot_project.tar not found — aborting deployment."
+              exit 1
+            fi
 
             echo "✓ Deployment completed! Campus Assistant Bot has started"

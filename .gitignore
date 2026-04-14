@@ -12,3 +12,4 @@ venv/
 *.log
 keypair_project.pem
 key/
+*.md
